@@ -5,7 +5,7 @@ class Actor{
         let g = Math.floor(Math.random() * 255);
         let b = Math.floor(Math.random() * 255);
         this.color = [r,g,b];
-        this.message = [];
+        this.messages = [];
     }
 
     set SelectedObject(selectedObject){
@@ -21,11 +21,11 @@ class Actor{
     }
 
     get Messages(){
-
+        return this.messages;
     }
 
     addMessage(message){
-        this.addMessage(message);
+        this.messages.push(message);
     }
 }
 

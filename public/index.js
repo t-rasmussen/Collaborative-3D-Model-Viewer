@@ -5,11 +5,14 @@ import { OrbitControls } from './master/examples/jsm/controls/OrbitControls.js';
 import { OBJLoader } from './master/examples/jsm/loaders/OBJLoader.js';
 
 import Actor from './actor.js';
+import ObjectPiece from './object_piece.js';
+import Message from './message.js';
 
 
-let margin = 50;
-let viewWidth = window.innerWidth - margin;
-let viewHeight = window.innerHeight - margin;
+let marginX = 0;
+let marginY = 150;
+let viewWidth = window.innerWidth - marginX;
+let viewHeight = window.innerHeight - marginY;
 let camera;
 let renderer;
 let scene;
@@ -22,6 +25,7 @@ let baseColor = 0x0000ff;
 let highlightColor = 0xff0000;
 let timberColor = 0xc19a6b;
 let head;
+let objectPieces = [];
 
 
 let controls;
@@ -35,9 +39,10 @@ const socket = io();
 
  //if room value was not input in prompt, then choose default room name 'room1' 
  if(!role){
-     role = 'designer';
+     role = 'Designer';
  }
 
+let otherActor = new Actor("other");
 let actor = new Actor(role);
 
 socket.on("cameraPose", (role, data) => {
@@ -54,16 +59,41 @@ socket.on("selectedObject", (role, data) => {
   for ( var i = 0; i < scene.children.length; i++ ) {
     if(scene.children[i].name){
       if(scene.children[i].name == data.name){
-        if(actor.SelectedObject){
-          actor.SelectedObject.material.color.set(timberColor);
+        if(otherActor.SelectedObject){
+          otherActor.SelectedObject.Object.material.color.set(timberColor);
         }
-        actor.SelectedObject = scene.children[i];
-        let rgb = actor.Color;
-        actor.SelectedObject.material.color.set(new THREE.Color("rgb("+rgb[0]+","+ rgb[1]+","+rgb[2]+")")); 
+        otherActor.SelectedObject = new ObjectPiece(scene.children[i]);
+        let rgb = otherActor.Color;
+        otherActor.SelectedObject.Object.material.color.set(new THREE.Color("rgb("+rgb[0]+","+ rgb[1]+","+rgb[2]+")")); 
       }
     }
   }
 })
+
+let waitingBtn = document.getElementById("waitingBtn");
+waitingBtn.addEventListener('click', () => {
+  showAllWaiting();
+});
+
+let fabricatedBtn = document.getElementById("fabricatedBtn");
+fabricatedBtn.addEventListener('click', () => {
+  showAllFabricated();
+});
+
+let shippedBtn = document.getElementById("shippedBtn");
+shippedBtn.addEventListener('click', () => {
+  showAllShipped();
+});
+
+let onsiteBtn = document.getElementById("onsiteBtn");
+onsiteBtn.addEventListener('click', () => {
+  showAllOnsite();
+});
+
+let assembledBtn = document.getElementById("assembledBtn");
+assembledBtn.addEventListener('click', () => {
+  showAllAssembled();
+});
 
 function main() {
 
@@ -77,19 +107,13 @@ function main() {
 	//		document.body.appendChild( renderer.domElement );
 
       var geometry = new THREE.BoxGeometry(1,1,1);
-      let rgb = actor.Color;
+      let rgb = otherActor.Color;
       var c = new THREE.Color("rgb("+rgb[0]+","+rgb[1]+","+rgb[2]+")");
 			var material = new THREE.MeshStandardMaterial( { color: c} );
       head = new THREE.Mesh( geometry, material );
       head.name = "head";
       scene.add(head);
-      
-     /* var geometry2 = new THREE.BoxGeometry(1,1,1);
-      var material2 = new THREE.MeshStandardMaterial( { color: baseColor } );
-      var cube2 = new THREE.Mesh( geometry2, material2 );
-      cube2.name = "cube2";*/
-      //cube2.position.y = 0.5;
-      //cube2.position.x = 5;*/
+
 
       var planeGeometry = new THREE.PlaneGeometry(20,20,32);
       var planeMaterial = new THREE.MeshBasicMaterial( {color: 0xffffff, side: THREE.DoubleSide} );
@@ -157,39 +181,23 @@ function select(){
 
     for ( var i = 0; i < intersects.length; i++ ) {
       console.log("intersected with " + intersects[i].object.name);
-      if(intersects[i].object.name.startsWith('cube')){
-        intersection = true;
-      }
-    }
-
-    if(intersection){
-      //reset color on previously selected object
-      for ( var i = 0; i < scene.children.length; i++ ) {
-        if(scene.children[i].name){
-          if(scene.children[i].name.startsWith('cube')){
-            if(actor.SelectedObject){
-              if(scene.children[i].name != actor.SelectedObject.name){
-                scene.children[i].material.color.set(timberColor); 
-              }
-            }
-            else{
-              scene.children[i].material.color.set(timberColor); 
-            }       
-          }
+      if(intersects[i].object.name.startsWith('timber')){
+        if(actor.SelectedObject){
+          actor.SelectedObject.Object.material.color.set(timberColor);
         }
-      }
-    }
 
-    for ( var i = 0; i < intersects.length; i++ ) {
-      if(intersects[i].object.name.startsWith('cube')){
-        intersects[ i ].object.material.color.set(highlightColor);
-        document.getElementById('metaInfo').innerHTML = intersects[ i ].object.name;
+        actor.SelectedObject = new ObjectPiece(intersects[i].object);
+        let rgb = actor.Color;
+        actor.SelectedObject.Object.material.color.set(new THREE.Color("rgb("+rgb[0]+","+ rgb[1]+","+rgb[2]+")")); 
+       
+        document.getElementById('metaInfo').innerHTML = actor.SelectedObject.Object.name;
         socket.emit("selectedObject", role, {
           name: intersects[ i ].object.name
         })
         break;
       }
     }
+
   }
 }
 
@@ -202,13 +210,12 @@ window.addEventListener('click', onMouseClick, false );
 
 function onWindowResize(){
   console.log("window resize");
-  viewWidth = window.innerWidth - margin;
-  viewHeight = window.innerHeight - margin;
+  viewWidth = window.innerWidth - marginX;
+  viewHeight = window.innerHeight - marginY;
   camera.aspect = viewWidth / viewHeight;
   camera.updateProjectionMatrix();
 
   renderer.setSize( viewWidth, viewHeight );
-
 }
 
 function onMouseClick( event ) {
@@ -225,8 +232,8 @@ function onTouchStart( event ) {
 	// calculate mouse position in normalized device coordinates
 	// (-1 to +1) for both components
 
-  mouse.x = ( event.touches[0].clientX / window.innerWidth ) * 2 - 1; // ( event.clientX / window.innerWidth ) * 2 - 1;
-  mouse.y = -( event.touches[0].clientY / window.innerHeight ) * 2 + 1; //- ( event.clientY / window.innerHeight ) * 2 + 1;
+  mouse.x = ( event.touches[0].clientX / viewWidth ) * 2 - 1; // ( event.clientX / window.innerWidth ) * 2 - 1;
+  mouse.y = -( event.touches[0].clientY / viewHeight ) * 2 + 1; //- ( event.clientY / window.innerHeight ) * 2 + 1;
   
   select();
 }
@@ -242,14 +249,30 @@ function loadObjModels(){
       './models/OBJ/'+i+'.obj',
       // called when resource is loaded
       function ( object ) {
-        object.children[0].name = "cube"+i;
+        object.children[0].name = "timber"+i;
         object.children[0].material = new THREE.MeshStandardMaterial( { color: timberColor } );
-        console.log(object)
-        console.log(object.children[0])
         //objects.push( object.children[0] );
-        scene.add( object.children[0] );
+       // console.log(object.children[0].uuid);¨
+        let objPiece = new ObjectPiece(object.children[0]);
+        let v = Math.floor(Math.random() * 5);
+        if(v == 0){
+          objPiece.FabricationStatus = "waiting";
+        }
+        else if(v == 1){
+          objPiece.FabricationStatus = "fabricated";
+        }
+        else if(v == 2){
+          objPiece.FabricationStatus = "shipped";
+        }
+        else if(v == 3){
+          objPiece.FabricationStatus = "onsite";
+        }
+        else if(v == 4){
+          objPiece.FabricationStatus = "assembled";
+        }
 
-        //console.log("children of Zollinger " + object.children.length)
+        objectPieces.push(objPiece);
+        scene.add( object.children[0] );  
       },
       // called when loading is in progresses
       function ( xhr ) {
@@ -264,5 +287,62 @@ function loadObjModels(){
 
       }
     );
+
   }
+}
+
+function showAllWaiting(){
+  objectPieces.forEach((objPiece) => {
+    if(objPiece.FabricationStatus == "waiting"){
+      objPiece.Object.visible = true;
+      console.log("waiting is visible")
+    }
+    else{
+      objPiece.Object.visible = false;
+    }
+  });
+}
+
+function showAllFabricated(){
+  objectPieces.forEach((objPiece) => {
+    if(objPiece.FabricationStatus == "fabricated"){
+      objPiece.Object.visible = true;
+    }
+    else{
+      objPiece.Object.visible = false;
+    }
+  });
+}
+
+function showAllShipped(){
+  objectPieces.forEach((objPiece) => {
+    if(objPiece.FabricationStatus == "shipped"){
+      objPiece.Object.visible = true;
+    }
+    else{
+      objPiece.Object.visible = false;
+    }
+  });
+}
+
+function showAllOnsite(){
+  objectPieces.forEach((objPiece) => {
+    if(objPiece.FabricationStatus == "onsite"){
+      objPiece.Object.visible = true;
+    }
+    else{
+      objPiece.Object.visible = false;
+    }
+  });
+}
+
+function showAllAssembled(){
+  objectPieces.forEach((objPiece) => {
+    if(objPiece.FabricationStatus == "assembled"){
+      objPiece.Object.visible = true;
+    }
+    else{
+      objPiece.Object.visible = false;
+    }
+  });
 }
