@@ -1,6 +1,7 @@
 <html>
     <head>
         <title>Model Viewer</title>
+        <link rel="stylesheet" href="index.css">
     </head>
     <body>
         <p id="debug"></p>
@@ -9,11 +10,30 @@
       <!--  <textarea id="comment" rows="4" cols="50">
             Add comment to piece here
         </textarea>-->
-        <button id="waitingBtn">Waiting</button>
-        <button id="fabricatedBtn">Fabricated</button>
-        <button id="shippedBtn">Shipped</button>
-        <button id="onsiteBtn">On site</button>
-        <button id="assembledBtn">Assembled</button>
+        <div id="statusBtns">
+            <button id="waitingBtn">Waiting</button>
+            <button id="fabricatedBtn">Fabricated</button>
+            <button id="shippedBtn">Shipped</button>
+            <button id="onsiteBtn">On site</button>
+            <button id="assembledBtn">Assembled</button>
+        </div>
+
+        <div id="statusRadioBtns">
+            <input type="radio" id="waiting" name="status" value="status">
+            <label for="waiting">Waiting</label>
+            
+            <input type="radio" id="fabricated" name="status" value="fabricated">
+            <label for="fabricated">Fabricated</label>
+            
+            <input type="radio" id="shipped" name="status" value="shipped">
+            <label for="fabricated">Shipped</label><br>
+            
+            <input type="radio" id="onsite" name="status" value="onsite">
+            <label for="onsite">On site</label>
+            
+            <input type="radio" id="Assembled" name="status" value="assembled">
+            <label for="assembled">Assembled</label>
+        </div>
 
         <script src="./js/socket.io.js"></script>
         <script type="module" src="index.js"></script>

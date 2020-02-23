@@ -20,8 +20,14 @@ var server = app.listen(PORT, () =>{
 
 var io = socket(server, {wsEngine:'ws'})
 
+
+let ryanRole;
+let nickyRole;
+let troelsRole;
 io.on('connection', (socket) => {
     console.log("socket with id ", socket.id , "connected")
+
+   // socket.broadcast.emit("joined");
 
     socket.on("cameraPose", (role, data)=>{
         //console.log(data);
@@ -32,5 +38,29 @@ io.on('connection', (socket) => {
         //console.log(data);
         socket.broadcast.emit("selectedObject", role, data);
     })
+
+
+    socket.on('join', (role) => {
+        if(role == "Ryan"){
+            ryanRole = "Ryan"
+        }
+        else if(role == "Nicky"){
+            nickyRole = "Nicky"
+        }
+        else if(role == "Troels"){
+            troelsRole = "Troels";
+        }
+        console.log([ryanRole, nickyRole, troelsRole]);
+        socket.emit('joined', {
+            peers: [ryanRole, nickyRole, troelsRole]
+        })
+
+        
+       // socket.broadcast.emit("peerJoined", role);
+    });
+
+  
+
+
 });
 
