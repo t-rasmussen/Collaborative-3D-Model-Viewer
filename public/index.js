@@ -50,27 +50,16 @@ if(!name){
 
 socket.emit("join", room, name);
 
-let otherActor = new Actor("norole");
-let otherActor2 = new Actor("norole");
-let actor = new Actor(name);
+let actor = new Actor(name, "red", 0);
 
 let otherPeers = {};
 
 let head;
 let head2;
 
-socket.on("cameraPose", (name, data) => {
-   let head = otherPeers[name].HeadObject;
-   head.position.x = data.position.x;
-   head.position.y = data.position.y;
-   head.position.z = data.position.z;
- 
-   head.rotation.x = data.rotation._x;
-   head.rotation.y = data.rotation._y;
-   head.rotation.z = data.rotation._z;
- // console.log("camera pose " + otherRole);
- /* if(otherRole == otherActor.Role){
-   // console.log("other actor");
+socket.on("cameraPose", (id, data) => {
+  if(otherPeers[id]){
+    let head = otherPeers[id].HeadObject;
     head.position.x = data.position.x;
     head.position.y = data.position.y;
     head.position.z = data.position.z;
@@ -79,53 +68,36 @@ socket.on("cameraPose", (name, data) => {
     head.rotation.y = data.rotation._y;
     head.rotation.z = data.rotation._z;
   }
-  else if(otherRole == otherActor2.Role){
-    //console.log("other actor 2");
-    head2.position.x = data.position.x;
-    head2.position.y = data.position.y;
-    head2.position.z = data.position.z;
-  
-    head2.rotation.x = data.rotation._x;
-    head2.rotation.y = data.rotation._y;
-    head2.rotation.z = data.rotation._z;
-  }*/
 })
 
-socket.on("selectedObject", (name, data) => {
-  for ( var i = 0; i < scene.children.length; i++ ) {
-    if(scene.children[i].name){
-      if(scene.children[i].name == data.name){
-        let otherPeer = otherPeers[name];
-        if(otherPeer.SelectedObject){
-          otherPeer.SelectedObject.Object.material.color.set(timberColor);
-        }
-        otherPeer.SelectedObject = new ObjectPiece(scene.children[i]);
-        let rgb = otherPeer.Color;
-        otherPeer.SelectedObject.Object.material.color.set(new THREE.Color("rgb("+rgb[0]+","+ rgb[1]+","+rgb[2]+")"));
-      /*  if(otherActor.Role == otherRole){
-          if(otherActor.SelectedObject){
-            otherActor.SelectedObject.Object.material.color.set(timberColor);
+socket.on("selectedObject", (id, data) => {
+  if(otherPeers[id]){
+    for ( var i = 0; i < scene.children.length; i++ ) {
+      if(scene.children[i].name){
+        if(scene.children[i].name == data.name){
+          let otherPeer = otherPeers[id];
+          if(otherPeer.SelectedObject){
+            otherPeer.SelectedObject.Object.material.color.set(timberColor);
           }
-          otherActor.SelectedObject = new ObjectPiece(scene.children[i]);
-          let rgb = otherActor.Color;
-          otherActor.SelectedObject.Object.material.color.set(new THREE.Color("rgb("+rgb[0]+","+ rgb[1]+","+rgb[2]+")"));
+          otherPeer.SelectedObject = new ObjectPiece(scene.children[i]);
+          let rgb = otherPeer.Color;
+          otherPeer.SelectedObject.Object.material.color.set(new THREE.Color("rgb("+rgb[0]+","+ rgb[1]+","+rgb[2]+")"));
         }
-        else if(otherActor2.Role == otherRole){
-          if(otherActor2.SelectedObject){
-            otherActor2.SelectedObject.Object.material.color.set(timberColor);
-          }
-          otherActor2.SelectedObject = new ObjectPiece(scene.children[i]);
-          let rgb = otherActor2.Color;
-          otherActor2.SelectedObject.Object.material.color.set(new THREE.Color("rgb("+rgb[0]+","+ rgb[1]+","+rgb[2]+")"));
-        } 
-      }*/
       }
     }
   }
 })
 
-socket.on("joined", (data) => {
+
+socket.on("thisPeerCreated", (peer) => {
+  console.log("peer " + peer.name  + " created room " + room);
+  actor.Color =  peer.color;
+  actor.Id = peer.id;
+})
+
+socket.on("thisPeerJoined", (data) => {
   actor.Color =  data.peer.color;
+  actor.Id = data.peer.id;
   
   let peers = data.peers;
   peers.forEach((peer) => {
@@ -133,23 +105,18 @@ socket.on("joined", (data) => {
   });
 });
 
-socket.on("peerCreated", (peer) => {
-  console.log("peer " + peer.name  + " created room " + room);
-  actor.Color =  peer.color;
-})
-
-socket.on("peerJoined", (peer) => {
+socket.on("otherPeerJoined", (peer) => {
   console.log("peer " + peer.name  + " joined room " + room);
   createPeer(peer);
 })
 
-socket.on("peerLeft", (peer) => {
+socket.on("otherPeerLeft", (peer) => {
   console.log("peer " + peer.name  + " left room " + room);
 
-  console.log("delete head object " + otherPeers[peer.name].HeadObject.name);
-  let selectedObject = scene.getObjectByName(otherPeers[peer.name].HeadObject.name);
+  console.log("delete head object " + otherPeers[peer.id].HeadObject.name);
+  let selectedObject = scene.getObjectByName(otherPeers[peer.id].HeadObject.name);
   scene.remove(selectedObject);
-  delete otherPeers[peer.name];
+  delete otherPeers[peer.id];
 
 })
 
@@ -159,20 +126,20 @@ socket.on("full", (room) => {
 });
 
 function createPeer(peer){
-  let otherActor = new Actor(peer.name, peer.color, peer.socketId);
+  let otherActor = new Actor(peer.name, peer.color, peer.id);
   
   let geometry = new THREE.BoxGeometry(1,1,1);
   let rgb = otherActor.Color;
   let color = new THREE.Color("rgb("+rgb[0]+","+rgb[1]+","+rgb[2]+")");
   let material = new THREE.MeshStandardMaterial( { color: color} );
   let head = new THREE.Mesh( geometry, material);
-  head.name = "head"+otherActor.Name;
+  head.name = "head"+otherActor.Id;
   head.position.x = 1000;
   
   otherActor.HeadObject = head;
   scene.add(head);
   
-  otherPeers[otherActor.Name] = otherActor;
+  otherPeers[otherActor.Id] = otherActor;
 }
 
 
@@ -221,26 +188,6 @@ function main() {
 			renderer.setSize( viewWidth, viewHeight );
 	//		document.body.appendChild( renderer.domElement );
 
-  /*    var geometry = new THREE.BoxGeometry(1,1,1);
-      let rgb = otherActor.Color;
-      var c = new THREE.Color("rgb("+rgb[0]+","+rgb[1]+","+rgb[2]+")");
-			var material = new THREE.MeshStandardMaterial( { color: c} );
-      head = new THREE.Mesh( geometry, material );
-      head.name = "head";
-      head.position.x = 1000;
-      otherActor.HeadObject = head;
-      scene.add(head);
-
-      var geometry2 = new THREE.BoxGeometry(1,1,1);
-      let rgb2 = otherActor2.Color;
-      var c2 = new THREE.Color("rgb("+rgb[0]+","+rgb[1]+","+rgb[2]+")");
-			var material2 = new THREE.MeshStandardMaterial( { color: c2} );
-      head2 = new THREE.Mesh( geometry2, material2);
-      head2.name = "head2";
-      head2.position.x = 1000;
-      otherActor2.HeadObject = head2;
-      scene.add(head2);*/
-
 
       var planeGeometry = new THREE.PlaneGeometry(20,20,32);
       var planeMaterial = new THREE.MeshBasicMaterial( {color: new THREE.Color("rgb(240, 240, 240)"), side: THREE.DoubleSide} );
@@ -286,7 +233,7 @@ function main() {
 
        // raycast();
 
-        socket.emit("cameraPose", room, name,
+        socket.emit("cameraPose", room, actor.Id,
         {
           position:camera.position,
           rotation:camera.rotation
@@ -322,7 +269,7 @@ function select(){
         actor.SelectedObject.Object.material.color.set(new THREE.Color("rgb("+rgb[0]+","+ rgb[1]+","+rgb[2]+")")); 
        
         document.getElementById('metaInfo').innerHTML = actor.SelectedObject.Object.name +" element";
-        socket.emit("selectedObject", room, name, {
+        socket.emit("selectedObject", room, actor.Id, {
           name: intersects[ i ].object.name
         })
         break;

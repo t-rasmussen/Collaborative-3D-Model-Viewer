@@ -71,6 +71,10 @@ class Actor{
         return this.color;
     }
 
+    set Id(id){
+        this.id = id;
+    }
+
     get Id(){
         return this.id;
     }

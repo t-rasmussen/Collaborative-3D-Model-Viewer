@@ -25,22 +25,12 @@ let ryanRole;
 let nickyRole;
 let troelsRole;
 let connections = [];
-let colors = ["red", "blue", "yellow", "orange", "green", "violet"]
+let colors = ["red", "blue", "yellow", "green", "violet", "orange"]
 
 io.on('connection', (socket) => {
     console.log("socket with id ", socket.id , "connected")
 
     socket.on('join', (room, name) => {
-      /*  if(role == "Ryan"){
-            ryanRole = "Ryan"
-        }
-        else if(role == "Nicky"){
-            nickyRole = "Nicky"
-        }
-        else if(role == "Troels"){
-            troelsRole = "Troels";
-        }*/
-
         let roomOfClients = io.nsps['/'].adapter.rooms[room];
         let numClients;
         if(!roomOfClients){
@@ -58,9 +48,9 @@ io.on('connection', (socket) => {
             let peer = {
                 name: name,
                 color:color,
-                socketId : socket.id
+                id:socket.id
             }
-            socket.emit('peerCreated', peer);
+            socket.emit('thisPeerCreated', peer);
             connections[room].push(peer);
         }
         else if(numClients > 0 && numClients < 6){
@@ -76,13 +66,13 @@ io.on('connection', (socket) => {
             let peer = {
                 name: name,
                 color:color,
-                socketId : socket.id
+                id:socket.id
             }
-            socket.emit('joined', {
+            socket.emit('thisPeerJoined', {
                 peer:peer,
                 peers: connections[room]    
             })   
-            socket.broadcast.to(room).emit('peerJoined', peer);
+            socket.broadcast.to(room).emit('otherPeerJoined', peer);
             connections[room].push(peer);
         }
         else {
@@ -108,7 +98,7 @@ io.on('connection', (socket) => {
             let deleteIndices = [];
             let peer;
             peers.forEach(p => {
-                if(p.socketId === socket.id){
+                if(p.id === socket.id){
                     peer = p;
                     deleteIndices.push(i);
                 }
@@ -126,21 +116,21 @@ io.on('connection', (socket) => {
 
             //send updated peers list to all peers in the room-all
             if(deleteIndices.length > 0){
-                socket.broadcast.to(room).emit('peerLeft', peer);
+                socket.broadcast.to(room).emit('otherPeerLeft', peer);
             }
 
             console.log("connections after socket disconnected " + peers);   
         }
     })
 
-    socket.on("cameraPose", (room, name, data)=>{
+    socket.on("cameraPose", (room, id, data)=>{
         //console.log(data);
-        socket.broadcast.to(room).emit("cameraPose", name, data);
+        socket.broadcast.to(room).emit("cameraPose", id, data);
     })
 
-    socket.on("selectedObject", (room, name, data)=>{
+    socket.on("selectedObject", (room, id, data)=>{
         //console.log(data);
-        socket.broadcast.to(room).emit("selectedObject", name, data);
+        socket.broadcast.to(room).emit("selectedObject", id, data);
     })
 
 
