@@ -33,26 +33,43 @@ const socket = io();
 
  //show prompt, where the user gets to type in a room name
 
- let role = "Nicky"
- role = prompt("Weclome back ", role);
+ let room = "room1"
+ room = prompt("Join a communication room ", room);
 
  //if room value was not input in prompt, then choose default room name 'room1' 
- if(!role){
-     role = 'Nicky';
- }
+if(!room){
+     room = 'room1';
+}
 
-socket.emit("join", role);
+let name = "Nicky"
+name = prompt("Weclome back ", name);
+//if name value was not input in prompt, then choose default name 'Nicky' 
+if(!name){
+    name = 'Nicky';
+}
+
+socket.emit("join", room, name);
 
 let otherActor = new Actor("norole");
 let otherActor2 = new Actor("norole");
-let actor = new Actor(role);
+let actor = new Actor(name);
+
+let otherPeers = {};
 
 let head;
 let head2;
 
-socket.on("cameraPose", (otherRole, data) => {
+socket.on("cameraPose", (name, data) => {
+   let head = otherPeers[name].HeadObject;
+   head.position.x = data.position.x;
+   head.position.y = data.position.y;
+   head.position.z = data.position.z;
+ 
+   head.rotation.x = data.rotation._x;
+   head.rotation.y = data.rotation._y;
+   head.rotation.z = data.rotation._z;
  // console.log("camera pose " + otherRole);
-  if(otherRole == otherActor.Role){
+ /* if(otherRole == otherActor.Role){
    // console.log("other actor");
     head.position.x = data.position.x;
     head.position.y = data.position.y;
@@ -71,14 +88,21 @@ socket.on("cameraPose", (otherRole, data) => {
     head2.rotation.x = data.rotation._x;
     head2.rotation.y = data.rotation._y;
     head2.rotation.z = data.rotation._z;
-  }
+  }*/
 })
 
-socket.on("selectedObject", (otherRole, data) => {
+socket.on("selectedObject", (name, data) => {
   for ( var i = 0; i < scene.children.length; i++ ) {
     if(scene.children[i].name){
       if(scene.children[i].name == data.name){
-        if(otherActor.Role == otherRole){
+        let otherPeer = otherPeers[name];
+        if(otherPeer.SelectedObject){
+          otherPeer.SelectedObject.Object.material.color.set(timberColor);
+        }
+        otherPeer.SelectedObject = new ObjectPiece(scene.children[i]);
+        let rgb = otherPeer.Color;
+        otherPeer.SelectedObject.Object.material.color.set(new THREE.Color("rgb("+rgb[0]+","+ rgb[1]+","+rgb[2]+")"));
+      /*  if(otherActor.Role == otherRole){
           if(otherActor.SelectedObject){
             otherActor.SelectedObject.Object.material.color.set(timberColor);
           }
@@ -94,35 +118,67 @@ socket.on("selectedObject", (otherRole, data) => {
           let rgb = otherActor2.Color;
           otherActor2.SelectedObject.Object.material.color.set(new THREE.Color("rgb("+rgb[0]+","+ rgb[1]+","+rgb[2]+")"));
         } 
+      }*/
       }
     }
   }
 })
 
 socket.on("joined", (data) => {
-  let roles = data.peers;
-  //console.log(peers);
-  for(let i = 0; i < roles.length; i++){
-    let peer = roles[i];
-    if(peer !== role){
-      if(otherActor.Role == "norole"){
-        otherActor.Role = peer;
+  actor.Color =  data.peer.color;
+  
+  let peers = data.peers;
+  peers.forEach((peer) => {
+    createPeer(peer);
+  });
+});
 
-        let rgb = otherActor.Color;
-        var c = new THREE.Color("rgb("+rgb[0]+","+rgb[1]+","+rgb[2]+")");
-			  var material = new THREE.MeshStandardMaterial( { color: c} );
-        otherActor.HeadObject.material = material;
-      }
-      else if(otherActor2.Role == "norole"){
-        otherActor2.Role = peer;
+socket.on("peerCreated", (peer) => {
+  console.log("peer " + peer.name  + " created room " + room);
+  actor.Color =  peer.color;
+})
 
-        let rgb = otherActor2.Color;
-        var c = new THREE.Color("rgb("+rgb[0]+","+rgb[1]+","+rgb[2]+")");
-			  var material = new THREE.MeshStandardMaterial( { color: c} );
-        otherActor2.HeadObject.material = material;
-      }
-    }
-  }
+socket.on("peerJoined", (peer) => {
+  console.log("peer " + peer.name  + " joined room " + room);
+  createPeer(peer);
+})
+
+socket.on("peerLeft", (peer) => {
+  console.log("peer " + peer.name  + " left room " + room);
+
+  console.log("delete head object " + otherPeers[peer.name].HeadObject.name);
+  let selectedObject = scene.getObjectByName(otherPeers[peer.name].HeadObject.name);
+  scene.remove(selectedObject);
+  delete otherPeers[peer.name];
+
+})
+
+socket.on("full", (room) => {
+  console.log("room is full");
+  alert("Room " + room + " is occupied by 6 people. Please connet to a different room");
+});
+
+function createPeer(peer){
+  let otherActor = new Actor(peer.name, peer.color, peer.socketId);
+  
+  let geometry = new THREE.BoxGeometry(1,1,1);
+  let rgb = otherActor.Color;
+  let color = new THREE.Color("rgb("+rgb[0]+","+rgb[1]+","+rgb[2]+")");
+  let material = new THREE.MeshStandardMaterial( { color: color} );
+  let head = new THREE.Mesh( geometry, material);
+  head.name = "head"+otherActor.Name;
+  head.position.x = 1000;
+  
+  otherActor.HeadObject = head;
+  scene.add(head);
+  
+  otherPeers[otherActor.Name] = otherActor;
+}
+
+
+let allBtn = document.getElementById("allBtn");
+allBtn.addEventListener('click', () => {
+  showAll();
 });
 
 let waitingBtn = document.getElementById("waitingBtn");
@@ -153,21 +209,25 @@ assembledBtn.addEventListener('click', () => {
 function main() {
 
       scene = new THREE.Scene();
-      scene.background = new THREE.Color( 'lightgray' );
-		  camera = new THREE.PerspectiveCamera( 75, viewWidth/viewHeight, 0.1, 1000 );
+      scene.background = new THREE.Color( 'white' );
+      camera = new THREE.PerspectiveCamera( 50, viewWidth/viewHeight, 0.1, 1000 );
+      camera.position.x = 25;
+      camera.position.y = 30;
+      camera.position.z = 25;
+
 
 			const canvas = document.querySelector('#c');
       renderer = new THREE.WebGLRenderer({canvas});
 			renderer.setSize( viewWidth, viewHeight );
 	//		document.body.appendChild( renderer.domElement );
 
-      var geometry = new THREE.BoxGeometry(1,1,1);
+  /*    var geometry = new THREE.BoxGeometry(1,1,1);
       let rgb = otherActor.Color;
       var c = new THREE.Color("rgb("+rgb[0]+","+rgb[1]+","+rgb[2]+")");
 			var material = new THREE.MeshStandardMaterial( { color: c} );
       head = new THREE.Mesh( geometry, material );
       head.name = "head";
-      head.position.x = 200;
+      head.position.x = 1000;
       otherActor.HeadObject = head;
       scene.add(head);
 
@@ -177,13 +237,13 @@ function main() {
 			var material2 = new THREE.MeshStandardMaterial( { color: c2} );
       head2 = new THREE.Mesh( geometry2, material2);
       head2.name = "head2";
-      head2.position.x = 200;
+      head2.position.x = 1000;
       otherActor2.HeadObject = head2;
-      scene.add(head2);
+      scene.add(head2);*/
 
 
       var planeGeometry = new THREE.PlaneGeometry(20,20,32);
-      var planeMaterial = new THREE.MeshBasicMaterial( {color: 0xffffff, side: THREE.DoubleSide} );
+      var planeMaterial = new THREE.MeshBasicMaterial( {color: new THREE.Color("rgb(240, 240, 240)"), side: THREE.DoubleSide} );
       var plane = new THREE.Mesh(planeGeometry, planeMaterial)
       plane.rotation.x = THREE.Math.degToRad( 90 ); 
 
@@ -192,12 +252,16 @@ function main() {
       var light = new THREE.PointLight( 0xffffff, 1, 100 );
       light.position.set( 5, 5, 5 );
 
+      var light2 = new THREE.PointLight( 0xffffff, 1, 100 );
+      light2.position.set( -5, -5, -5 );
+
       var ambient = new THREE.AmbientLight( 0xADD8E6, 0.3 );
       scene.add(ambient);
 
       //scene.add( cube );
       //scene.add( cube2 );
       scene.add( light );
+      scene.add( light2 );
 
       scene.add(plane);
 
@@ -222,7 +286,7 @@ function main() {
 
        // raycast();
 
-        socket.emit("cameraPose", role,
+        socket.emit("cameraPose", room, name,
         {
           position:camera.position,
           rotation:camera.rotation
@@ -257,8 +321,8 @@ function select(){
         let rgb = actor.Color;
         actor.SelectedObject.Object.material.color.set(new THREE.Color("rgb("+rgb[0]+","+ rgb[1]+","+rgb[2]+")")); 
        
-        document.getElementById('metaInfo').innerHTML = actor.SelectedObject.Object.name;
-        socket.emit("selectedObject", role, {
+        document.getElementById('metaInfo').innerHTML = actor.SelectedObject.Object.name +" element";
+        socket.emit("selectedObject", room, name, {
           name: intersects[ i ].object.name
         })
         break;
@@ -321,22 +385,28 @@ function loadObjModels(){
         //objects.push( object.children[0] );
        // console.log(object.children[0].uuid);¨
         let objPiece = new ObjectPiece(object.children[0]);
-        let v = Math.floor(Math.random() * 5);
-        if(v == 0){
+        let split = 97.0/5.0;
+
+       
+        if(i < split*1){
+          console.log("waiting");
           objPiece.FabricationStatus = "waiting";
         }
-        else if(v == 1){
+        else if(i < split*2){
+          console.log("fabricated");
           objPiece.FabricationStatus = "fabricated";
         }
-        else if(v == 2){
+        else if(i < split*3){
+          console.log("shipped");
           objPiece.FabricationStatus = "shipped";
         }
-        else if(v == 3){
+        else if(i < split*4){
           objPiece.FabricationStatus = "onsite";
         }
-        else if(v == 4){
+        else if(i < split*5){
           objPiece.FabricationStatus = "assembled";
         }
+
 
         objectPieces.push(objPiece);
         scene.add( object.children[0] );  
@@ -344,7 +414,7 @@ function loadObjModels(){
       // called when loading is in progresses
       function ( xhr ) {
 
-        console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
+       // console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
 
       },
       // called when loading has errors
@@ -356,6 +426,12 @@ function loadObjModels(){
     );
 
   }
+}
+
+function showAll(){
+  objectPieces.forEach((objPiece) => {
+    objPiece.Object.visible = true;
+  });
 }
 
 function showAllWaiting(){

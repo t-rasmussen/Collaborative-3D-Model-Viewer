@@ -1,39 +1,41 @@
 class Actor{
-    constructor(role){
-        this.role = role;
+    constructor(name, colorString, id){
+        this.name = name;
+      
         let r = Math.floor(Math.random() * 255);
         let g = Math.floor(Math.random() * 255);
         let b = Math.floor(Math.random() * 255);
         this.color = [r,g,b];
+        if(colorString == "red"){
+            this.color = [255, 0, 0];
+        }
+        else if(colorString == "blue"){
+            this.color = [0, 0, 255];
+        }
+        else if(colorString == "yellow"){
+            this.color = [255, 255, 0];
+        }
+        else if(colorString == "green"){
+            this.color = [0, 255, 0];
+        }
+        else if(colorString == "violet"){
+            this.color = [238,130,238];
+        }
+        else if(colorString == "orange"){
+            this.color = [255, 165, 0];
+        }
+
+
+        this.id = id;
         this.messages = [];
-
-        if(this.role == "Nicky"){
-            this.color = [29,201,183];
-        }
-        else if(this.role == "Ryan"){
-            this.color = [88,103,221];
-        }
-        else if(this.role == "Troels"){
-            this.color = [253,57,122];
-        }
     }
 
-    set Role(role){
-        this.role = role;
-       
-        if(this.role == "Nicky"){
-            this.color = [29,201,183];
-        }
-        else if(this.role == "Ryan"){
-            this.color = [88,103,221];
-        }
-        else if(this.role == "Troels"){
-            this.color = [253,57,122];
-        }
+    set Name(name){
+        this.name;
     }
 
-    get Role(){
-        return this.role;
+    get Name(){
+        return this.name;
     }
 
     set SelectedObject(selectedObject){
@@ -44,8 +46,33 @@ class Actor{
         return this.selectedObject;
     }
 
+    set Color(colorString){
+        if(colorString == "red"){
+            this.color = [255, 0, 0];
+        }
+        else if(colorString == "blue"){
+            this.color = [0, 0, 255];
+        }
+        else if(colorString == "yellow"){
+            this.color = [255, 255, 0];
+        }
+        else if(colorString == "green"){
+            this.color = [0, 255, 0];
+        }
+        else if(colorString == "violet"){
+            this.color = [238,130,238];
+        }
+        else if(colorString == "orange"){
+            this.color = [255, 165, 0];
+        }
+    }
+
     get Color(){
         return this.color;
+    }
+
+    get Id(){
+        return this.id;
     }
 
     get Messages(){
